@@ -145,12 +145,12 @@ Powered by
 
 ---
 
-## Windows ホストの PowerShell からイベントログに書き込む
+## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command
 
 ```sh
 $ aws ssm send-command \
 --document-name "AWS-RunPowerShellScript" \
---instance-ids "i-00342466c9d9b3c47" \
+--instance-ids "i-xxxxxxxxxxxwindws" \
 --parameters '{
   "commands": [
     "$EventSource=\"SSMRunCommand\"",
@@ -187,15 +187,21 @@ def lambda_handler(event, context):
     return None
 ```
 
+* 受け取った `event` からパラメータを引っ張って `send_command()` を単純に実行するのみ
+
 >>>
 
-## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command を Lambda から実行
+## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command を実行する Lambda Function を実行する
 
 ```sh
-$ aws lambda invoke --function sample-function /dev/stdout --region ap-northeast-1 --payload '{
+$ aws lambda invoke \
+  --function sample-function \
+  /dev/stdout \
+  --region ap-northeast-1 \
+  --payload '{
   "DocumentName": "AWS-RunPowerShellScript",
   "InstanceIds": [
-    "i-00342466c9d9b3c47"
+    "i-xxxxxxxxxxxwindws"
   ],
   "Parameters": {
     "commands": [
@@ -214,14 +220,35 @@ $ aws lambda invoke --function sample-function /dev/stdout --region ap-northeast
 
 >>>
 
-## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command を実行する Lambda Function を Linux ホストから実行する SSM Run Command
+## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command を実行する Lambda Function を Linux ホストのシェルから実行する SSM Run Command
 
 ```sh
-aws ssm send-command --document-name "AWS-RunShellScript" --instance-ids "i-020ab852e73e487a0" --parameters $'{"commands":["aws lambda invoke --function sample-function /dev/stdout --region ap-northeast-1 --payload \'{","  \"DocumentName\": \"AWS-RunPowerShellScript\",","  \"InstanceIds\": [","    \"i-00342466c9d9b3c47\"","  ],","  \"Parameters\": {","    \"commands\": [","      \"$EventSource=\\\"SSMRunCommand\\\"\",","      \"if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false){\",","      \"    New-EventLog -LogName Application -Source $EventSource\",","      \"}\",","      \"Write-EventLog -LogName Application -EntryType Information -Source $EventSource -EventId 1 -Message \\\"Hello, SSM Run Command!\\\"\"","    ],","    \"executionTimeout\": [","      \"30\"","    ]","  }","}\'"],"executionTimeout":["60"]}' --timeout-seconds 60 --region ap-northeast-1
+$ aws ssm send-command \
+--document-name "AWS-RunShellScript" \
+--instance-ids "i-xxxxxxxxxxxlinux" \
+--parameters '{
+  "commands": [
+    "aws lambda invoke --function sample-function /dev/stdout --region ap-northeast-1 --payload \"{\\\"DocumentName\\\":\\\"AWS-RunPowerShellScript\\\",\\\"InstanceIds\\\":[\\\"i-xxxxxxxxxxxwindws\\\"],\\\"Parameters\\\":{\\\"commands\\\":[\\\"\\$EventSource=\\\\\\\"SSMRunCommand\\\\\\\"\\\",\\\"if ([System.Diagnostics.EventLog]::SourceExists(\\$EventSource) -eq \\$false){\\\",\\\"New-EventLog -LogName Application -Source \\$EventSource\\\",\\\"}\\\",\\\"Write-EventLog -LogName Application -EntryType Information -Source \\$EventSource -EventId 1 -Message \\\\\\\"Hello, SSM Run Command!\\\\\\\"\\\"],\\\"executionTimeout\\\":[\\\"30\\\"]}}\""
+  ],
+  "executionTimeout": [
+    "30"
+  ]
+}' \
+--timeout-seconds 30 \
+--region ap-northeast-1
 ```
 
 >>>
 
-## ...というのを、やってみたかったけど、ちゃんとエスケープできてなかった
+![event viewer](img/eventvwr.png)
 
-気が向いたらやる
+エスケープがんばればいけないこともない (LTまでには解けなかった)
+
+---
+
+## SSM Run Command
+
+* 複数のホストに並列にコマンドを投げられる
+* CloudTrail で記録を残せるので、誰がいつ何を実行したかを追跡できる
+* Windows にも Linux にもコマンドを投げられる
+* 実行結果を取ってくるのは割と面倒くさい
