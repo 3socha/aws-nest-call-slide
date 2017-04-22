@@ -44,6 +44,7 @@ Powered by
 
 ## SSM Run Command
 
+* EC2 System Manager の一機能
 * SSM Agent が SSM エンドポイントと通信し、リモートからコマンドを実行
   * Linux : [要 Agent インストール](http://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/ssm-agent.html)
   * Windows : WS2016 / 2016年11月以降に公開された WS2003~WS2012R2 のイメージにはインストール済み
