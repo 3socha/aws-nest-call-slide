@@ -17,8 +17,7 @@ Powered by
 ![so](img/so.png)
 
 * so
-* インフラエンジニア
-  * 主に AWS 方面
+* インフラエンジニア (AWS)
 * [@3socha](https://twitter.com/3socha)
 
 ---
@@ -144,39 +143,85 @@ Powered by
 }
 ```
 
->>>
+---
 
-## Linux ホストで `uname -a` を実行
-
-```sh
-aws ssm send-command \
-  --document-name "AWS-RunShellScript" \
-  --instance-ids "i-020ab852e73e487a0" \
-  --parameters '
-    {
-      "commands": [ "uname -a" ],
-      "executionTimeout": [ "30" ]
-    }' \
-  --timeout-seconds 30 \
-  --region ap-northeast-1
-```
-
-* 実行結果を S3 に吐いてないのであまり意味はない
-
->>>
-
-## Windows ホストの Powershell で `Get-AWSPowerShellVersion` を実行
+## Windows ホストの PowerShell からイベントログに書き込む
 
 ```sh
 $ aws ssm send-command \
 --document-name "AWS-RunPowerShellScript" \
 --instance-ids "i-00342466c9d9b3c47" \
---parameters '
-{
-  "commands": [ "Get-AWSPowerShellVersion" ],
-  "executionTimeout": [ "30" ]
+--parameters '{
+  "commands": [
+    "$EventSource=\"SSMRunCommand\"",
+    "if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false){",
+    "    New-EventLog -LogName Application -Source $EventSource",
+    "}",
+    "Write-EventLog -LogName Application -EntryType Information -Source $EventSource -EventId 1 -Message \"Hello, SSM Run Command!\""
+  ],
+  "executionTimeout": [
+    "30"
+  ]
 }' \
 --timeout-seconds 30 \
 --region ap-northeast-1
 ```
 
+* コマンドの出力が必要な場合は S3 に吐いておかないと残らない
+* send-command 自体はすぐ終了するため、実行の完了を待ち合わせる必要あり
+
+>>>
+
+## Lambda (Python 3.6) から実行
+
+```python
+import boto3
+
+def lambda_handler(event, context):
+    client = boto3.client('ssm')
+    client.send_command(
+        DocumentName=event['DocumentName'],
+        InstanceIds=event['InstanceIds'],
+        Parameters=event['Parameters'],
+    )
+    return None
+```
+
+>>>
+
+## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command を Lambda から実行
+
+```sh
+$ aws lambda invoke --function sample-function /dev/stdout --region ap-northeast-1 --payload '{
+  "DocumentName": "AWS-RunPowerShellScript",
+  "InstanceIds": [
+    "i-00342466c9d9b3c47"
+  ],
+  "Parameters": {
+    "commands": [
+      "$EventSource=\"SSMRunCommand\"",
+      "if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false){",
+      "    New-EventLog -LogName Application -Source $EventSource",
+      "}",
+      "Write-EventLog -LogName Application -EntryType Information -Source $EventSource -EventId 1 -Message \"Hello, SSM Run Command!\""
+    ],
+    "executionTimeout": [
+      "30"
+    ]
+  }
+}'
+```
+
+>>>
+
+## Windows ホストの PowerShell からイベントログに書き込む SSM Run Command を実行する Lambda Function を Linux ホストから実行する SSM Run Command
+
+```sh
+aws ssm send-command --document-name "AWS-RunShellScript" --instance-ids "i-020ab852e73e487a0" --parameters $'{"commands":["aws lambda invoke --function sample-function /dev/stdout --region ap-northeast-1 --payload \'{","  \"DocumentName\": \"AWS-RunPowerShellScript\",","  \"InstanceIds\": [","    \"i-00342466c9d9b3c47\"","  ],","  \"Parameters\": {","    \"commands\": [","      \"$EventSource=\\\"SSMRunCommand\\\"\",","      \"if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false){\",","      \"    New-EventLog -LogName Application -Source $EventSource\",","      \"}\",","      \"Write-EventLog -LogName Application -EntryType Information -Source $EventSource -EventId 1 -Message \\\"Hello, SSM Run Command!\\\"\"","    ],","    \"executionTimeout\": [","      \"30\"","    ]","  }","}\'"],"executionTimeout":["60"]}' --timeout-seconds 60 --region ap-northeast-1
+```
+
+>>>
+
+## ...というのを、やってみたかったけど、ちゃんとエスケープできてなかった
+
+気が向いたらやる
