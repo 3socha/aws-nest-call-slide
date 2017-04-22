@@ -8,21 +8,46 @@
 
 Powered by
 * [reveal.js](https://github.com/hakimel/reveal.js/)
-* [GitHub Pages](https://horo17.github.io/ssm-run-command-slide/)
+* [GitHub Pages](https://horo17.github.io/aws-nest-call-slide/)
 
 >>>
 
 ## `$ whoami`
 
-![icon](img/so.png)
+![so](img/so.png)
 
 * so
 * インフラエンジニア (AWS)
-* Twitter: @3socha
+* [@3socha](https://twitter.com/3socha)
+* 
 
 ---
 
-## SSM Run Command
+## EC2 System Manager
+
+![SystemManager](img/system_manager.png)
+
+- 旧称 SSM (Simple System Manager)
+
+>>>
+
+## SystemManager 機能
+
+![ssm_ft1](img/ssm_ft1.png)
+
+>>>
+
+## SystemManager 機能
+
+![ssm_ft2](img/ssm_ft2.png)
+
+>>>
+
+- ssm-agent (Linux) と通信し、リモートからコマンドを実行
+- 
+
+>>>
+
 
 ```sh
 $ aws ssm send-command \
